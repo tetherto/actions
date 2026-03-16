@@ -1,0 +1,23 @@
+name: Setup Bare
+description: Setup required components for Bare projects
+
+inputs:
+  node-version:
+    description: Node.js version to install
+    required: false
+    default: '24.14.0'
+  install-command:
+    description: Command used to install dependencies
+    required: false
+    default: npm install
+
+runs:
+  using: composite
+  steps:
+    - uses: tetherto/actions/node-base@v1
+      with:
+        node-version: ${{ inputs.node-version }}
+        install-command: ${{ inputs.install-command }}
+
+    - run: npm install -g bare-runtime
+      shell: bash
