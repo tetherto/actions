@@ -1,26 +1,12 @@
-name: Setup Node
+name: Setup
 description: Node LTS + fixed action versions
-
-inputs:
-  node-version:
-    description: Node.js version to install
-    required: false
-    default: '24.14.0'
-  install-command:
-    description: Command used to install dependencies
-    required: false
-    default: npm install
 
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 https://github.com/actions/checkout/releases/tag/v6.0.2
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
       with:
-        submodules: true
-
-    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0 https://github.com/actions/checkout/releases/tag/v6.3.0
-      with:
-        node-version: ${{ inputs.node-version }}
-
-    - run: ${{ inputs.install-command }}
+        node-version: lts/*
+    - run: npm install
       shell: bash
