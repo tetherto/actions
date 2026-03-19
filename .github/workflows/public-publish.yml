@@ -16,7 +16,7 @@ jobs:
     environment: release
     permissions:
       contents: write
-
+      id-token: write  # needed for OIDC token provenance
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -29,8 +29,8 @@ jobs:
       - run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          npm version ${{ inputs.bump }} --provenance
-          npm publish --access public
+          npm version ${{ inputs.bump }}
+          npm publish --access public --provenance
           git push --follow-tags
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
