@@ -1,5 +1,4 @@
 name: Release
-
 on:
   workflow_call:
     inputs:
@@ -7,21 +6,25 @@ on:
         required: true
         type: string
       preid:
-        description: Pre-release identifier (e.g. alpha, beta, rc)
+        description: Pre-release identifier
         required: false
         type: string
         default: ''
+      tag:
+        description: npm dist-tag
+        required: false
+        type: string
+        default: 'latest'
     secrets:
       NPM_TOKEN:
         required: true
-
 jobs:
   release:
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: write
-      id-token: write  # needed for OIDC token provenance
+      id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -34,8 +37,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          npm version ${{ inputs.bump }} ${{ inputs.preid && format('--preid={0}', inputs.preid) || '' }}
-          npm publish --access public --provenance
+          npm version ${{ inputs.bump }} ${{ inputs.preid != '' && format('--preid={0}', inputs.preid) || '' }}
+          npm publish --access public --provenance --tag ${{ inputs.tag }}
           git push --follow-tags
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
