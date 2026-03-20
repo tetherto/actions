@@ -49,10 +49,17 @@ jobs:
           echo "version=${NEW_VERSION#v}" >> "$GITHUB_OUTPUT"
           echo "branch=release/v${NEW_VERSION#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Update lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm install --ignore-scripts --package-lock-only
+          fi
+
       - name: Create branch and push
         run: |
           git checkout -b ${{ steps.bump.outputs.branch }}
           git add package.json
+          [ -f package-lock.json ] && git add package-lock.json
           git commit -m "Release: v${{ steps.bump.outputs.version }}"
           git push origin ${{ steps.bump.outputs.branch }}
 
