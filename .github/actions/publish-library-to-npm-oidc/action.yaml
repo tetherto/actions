@@ -1,10 +1,15 @@
-name: Publish NPM
-description: "Publish a package to NPM"
+name: Publish trusted NPM package
+description: "Publish a trusted package to NPM"
 
 inputs:
+  secret-token:
+    description: "NPM auth token"
+    required: true
+
   release:
     description: "Use tag. Release stream, temporary here for compatibility with old workflows"
     required: false
+
   tag:
     description: "Release Stream (npm dist-tag)"
     required: false
@@ -30,10 +35,6 @@ inputs:
     description: "repo suffix name appended to created git tag"
     required: false
 
-  npm-global-version:
-    description: npm CLI semver range to install globally before publish.
-    default: ^11.10.0
-
 outputs:
   npm_published_version:
     description: "The version that was actually published to npm (empty if skipped)."
@@ -51,17 +52,16 @@ runs:
         registry-url: "https://registry.npmjs.org/"
         scope: "@qvac"
 
-    - name: Upgrade npm to npm-global-version
+    - name: Upgrade npm to support trusted publishing
       shell: bash
-      env:
-        NPM_VERSION: ${{ inputs.npm-global-version }}
       run: |
-        npm install -g "npm@${NPM_VERSION}"
+        npm install -g "npm@11.10.0"
 
     - name: Publish to NPM and optionally tag repo
       id: publish
       shell: bash
       env:
+        NODE_AUTH_TOKEN: ${{ inputs.secret-token }}
         GIT_PUSH_TOKEN: ${{ inputs.git-token }}
         CREATE_TAG: ${{ inputs.create-tag }}
         INPUT_PATH: ${{ inputs.path }}
@@ -113,6 +113,7 @@ runs:
         {
           echo "registry=https://registry.npmjs.org/"
           echo "@qvac:registry=https://registry.npmjs.org/"
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}"
         } > .npmrc
 
         ####################################################################
@@ -168,9 +169,9 @@ runs:
 
         if ([ "${EVENT_NAME}" = "push" ] || [ "${EVENT_NAME}" = "workflow_dispatch" ]) && [ "$ACCESS" = "public" ]; then
           echo "Publishing with provenance statements"
-          npm publish --tag "$TAG" --access "$ACCESS" --provenance
+          NPM_AUTH_TOKEN="" npm publish --tag "$TAG" --access "$ACCESS" --provenance
         else
-          npm publish --tag "$TAG" --access "$ACCESS"
+          NPM_AUTH_TOKEN=""  npm publish --tag "$TAG" --access "$ACCESS"
         fi
 
         echo "npm publish completed successfully"
