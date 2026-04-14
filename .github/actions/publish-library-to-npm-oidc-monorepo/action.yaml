@@ -2,6 +2,8 @@ name: Publish trusted NPM package Monorepo
 description: "Publish a trusted package to NPM"
 
 inputs:
+  # NPM_AUTH_TOKEN is required for restricted packages to run `npm view`
+  # and check if a version already exists before publishing.
   secret-token:
     description: "NPM auth token"
     required: false
@@ -15,11 +17,11 @@ inputs:
     required: false
 
   workdir:
-    description: "Directory containing package.json (preferred for monorepo)"
-    required: false
+    description: "Directory containing package.json (required for monorepo)"
+    required: true
 
   git-token:
-    description: "PAT with contents:write to create and push git tags"
+    description: "Github Token with contents:write to create and push git tags"
     required: false
 
   create-tag:
@@ -28,13 +30,12 @@ inputs:
     default: "false"
 
   repo_name:
-    description: "repo prefix name appended to created git tag"
-    required: false
+    description: "monorepo package name prefix appended to created git tag"
+    required: true
 
   npm_package_scope:
     description: "Scope of the npm package"
-    required: false
-    default: "@qvac"
+    required: true
 
   npm_package_access:
     description: "access level for the npm package (e.g., public or restricted)"
@@ -52,6 +53,32 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Validate Required inputs
+      shell: bash
+      env:
+        INPUT_NPM_PACKAGE_SCOPE: ${{ inputs.npm_package_scope }}
+        INPUT_NPM_PACKAGE_ACCESS: ${{ inputs.npm_package_access }}
+        INPUT_SECRET_TOKEN: ${{ inputs.secret-token }}
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_REPO_NAME: ${{ inputs.repo_name }}
+      run: |
+        if [ -z "${INPUT_NPM_PACKAGE_SCOPE}" ]; then
+          echo "ERROR: npm_package_scope is required" >&2
+          exit 1
+        fi
+        if [ "${INPUT_NPM_PACKAGE_ACCESS}" = "restricted" ] && [ -z "${INPUT_SECRET_TOKEN:-}" ]; then
+          echo "ERROR: secret-token is required when npm_package_access is restricted" >&2
+          exit 1
+        fi
+        if [ -z "${INPUT_WORKDIR}" ]; then
+          echo "ERROR: workdir is required" >&2
+          exit 1
+        fi
+        if [ -z "${INPUT_REPO_NAME}" ]; then
+          echo "ERROR: repo_name is required" >&2
+          exit 1
+        fi
+
     - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # 6.3.0
       with:
         node-version: "24.14.1" # installs npm version 11.11.0
@@ -99,16 +126,6 @@ runs:
         fi
 
         ####################################################################
-        # Write .npmrc
-        ####################################################################
-        echo "Writing .npmrc in $(pwd)"
-        {
-          echo "registry=https://registry.npmjs.org/"
-          echo "${NPM_PACKAGE_SCOPE}:registry=https://registry.npmjs.org/"
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}"
-        } > .npmrc
-
-        ####################################################################
         # Core logic preserved below
         ####################################################################
 
@@ -151,15 +168,20 @@ runs:
 
         ACCESS="${NPM_PACKAGE_ACCESS}"
 
-        if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
+        if [ "$ACCESS" = "restricted" ]; then
+          exit_code=$(npm view "$PACKAGE_NAME@$VERSION" version --//registry.npmjs.org/:_authToken="${NODE_AUTH_TOKEN}" >/dev/null 2>&1; echo $?)
+        else
+          exit_code=$(npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; echo $?)
+        fi
+
+        if [ "$exit_code" -eq 0 ]; then
           echo "Version $VERSION already exists for $PACKAGE_NAME on npm, skipping publish"
-          # NEW: explicitly mark skipped and leave published_version empty
           echo "npm_publish_skipped=true" >> "$GITHUB_OUTPUT"
           echo "npm_published_version=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        NPM_AUTH_TOKEN="" npm publish --tag "$TAG" --access "$ACCESS"
+        npm publish --tag "$TAG" --access "$ACCESS"
 
         echo "npm publish completed successfully"
 
