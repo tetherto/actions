@@ -61,7 +61,7 @@ runs:
           echo "ERROR: npm_package_scope is required" >&2
           exit 1
         fi
-        if [ "${INPUT_NPM_PACKAGE_ACCESS}" = "restricted" ] && [ -z "${INPUT_SECRET_TOKEN}" ]; then
+        if [ "${INPUT_NPM_PACKAGE_ACCESS}" = "restricted" ] && [ -z "${INPUT_SECRET_TOKEN:-}" ]; then
           echo "ERROR: secret-token is required when npm_package_access is restricted" >&2
           exit 1
         fi
