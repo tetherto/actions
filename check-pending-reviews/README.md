@@ -7,7 +7,7 @@ informational comment on the PR.
 
 1. Fetches all reviews for the PR and collapses them to the latest review per reviewer.
 2. Resolves each approver's role by checking their team membership via a **GitHub App**
-   installation token (maintainer → team lead → other).
+   OAuth client credentials (maintainer → team lead → other).
 3. Only counts approvers who have at least **write** access to the repository (write,
    maintain, or admin).
 4. Evaluates the approval gate:
@@ -19,8 +19,9 @@ informational comment on the PR.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `app-id` | ✅ | — | GitHub App ID. The app requires **Members (read)** repository permission and **Members (read)** organisation permission. |
-| `private-key` | ✅ | — | GitHub App private key (PEM format). |
+| `app-id` | ✅ | — | GitHub App ID. Used to identify which app's credentials are in use. |
+| `client-id` | ✅ | — | GitHub App OAuth client ID. The app requires **Members (read)** repository permission and **Members (read)** organisation permission. |
+| `client-secret` | ✅ | — | GitHub App OAuth client secret. |
 | `github-token` | ❌ | `${{ github.token }}` | Token used to post/update the PR comment (the built-in `GITHUB_TOKEN` is sufficient). |
 | `pr-number` | ✅ | — | PR number to check. |
 | `maintainers-github-team` | ✅ | — | GitHub team slug for maintainer approvers (e.g. managers). Used for urgent or escalated merges. |
@@ -34,7 +35,8 @@ informational comment on the PR.
   uses: oss-actions/check-pending-reviews@v1
   with:
     app-id: ${{ secrets.APP_ID }}
-    private-key: ${{ secrets.APP_PRIVATE_KEY }}
+    client-id: ${{ secrets.APP_CLIENT_ID }}
+    client-secret: ${{ secrets.APP_CLIENT_SECRET }}
     pr-number: ${{ github.event.pull_request.number }}
     maintainers-github-team: my-maintainers-team
     team-leads-github-team: my-team-leads-team
