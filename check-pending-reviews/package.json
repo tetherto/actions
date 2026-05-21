@@ -1,15 +1,16 @@
 {
   "name": "pending-reviews-action",
   "version": "1.0.0",
-  "description": "Posts an informational PR comment showing approval counts by reviewer role. Always exits successfully — merge enforcement is handled by repository rulesets.",
+  "description": "Checks PR approval requirements by role and posts a commit status + PR comment",
   "scripts": {
     "build": "ncc build src/index.js -o dist --quiet",
     "test": "jest",
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@actions/core": "^2.0.3",
-    "@actions/github": "^8.0.1"
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "@octokit/auth-app": "^8.2.0"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.3",

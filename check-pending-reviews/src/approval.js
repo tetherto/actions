@@ -1,18 +1,11 @@
-const DISPLAY = {
-  maintainer: "Management",
-  teamLead: "Team Lead",
-  other: "Member",
-};
+const DISPLAY = { maintainer: "Management", teamLead: "Team Lead", other: "Member" };
 
 const MIN_CODEOWNER = 1;
 
 function getLatestApprovals(reviews) {
   return reviews.reduce((byUser, review) => {
     const username = review.user?.login;
-    if (
-      username &&
-      (!byUser[username] || review.submitted_at > byUser[username].submitted_at)
-    ) {
+    if (username && (!byUser[username] || review.submitted_at > byUser[username].submitted_at)) {
       byUser[username] = review;
     }
     return byUser;
@@ -32,14 +25,12 @@ function getPendingMessage(counts, minTotal) {
   const total = codeowner + other;
 
   const missingCodeowner = Math.max(0, MIN_CODEOWNER - codeowner);
-  const missingTotal = Math.max(0, minTotal - total);
-  const extraNeeded = Math.max(0, missingTotal - missingCodeowner);
+  const missingTotal     = Math.max(0, minTotal - total);
+  const extraNeeded      = Math.max(0, missingTotal - missingCodeowner);
 
   const parts = [];
-  if (missingCodeowner > 0)
-    parts.push(`${missingCodeowner} Management or Team Lead`);
-  if (extraNeeded > 0)
-    parts.push(`${extraNeeded} more from Management, Team Lead, or Member`);
+  if (missingCodeowner > 0) parts.push(`${missingCodeowner} Management or Team Lead`);
+  if (extraNeeded > 0)      parts.push(`${extraNeeded} more from Management, Team Lead, or Member`);
   return parts.join(", and ");
 }
 
@@ -59,11 +50,4 @@ function buildComment(approved, counts, pendingMessage) {
   return lines.join("\n");
 }
 
-module.exports = {
-  DISPLAY,
-  MIN_CODEOWNER,
-  getLatestApprovals,
-  checkApproved,
-  getPendingMessage,
-  buildComment,
-};
+module.exports = { DISPLAY, MIN_CODEOWNER, getLatestApprovals, checkApproved, getPendingMessage, buildComment };

@@ -1,0 +1,36 @@
+name: Pending Reviews
+description: >
+  Checks PR approval requirements across three reviewer roles and posts a commit
+  status to the PR head SHA plus an informational PR comment.
+
+inputs:
+  app-id:
+    description: GitHub App ID. The app requires Members (read) repository permission and Members (read) organisation permission.
+    required: true
+  private-key:
+    description: GitHub App private key (PEM format).
+    required: true
+  github-token:
+    description: Token for posting PR comments. Defaults to the built-in GITHUB_TOKEN (github-actions[bot]).
+    default: ${{ github.token }}
+    required: false
+  pr-number:
+    description: PR number to check
+    required: true
+  maintainers-github-team:
+    description: >
+      GitHub team slug for maintainer approvers (e.g. managers).
+      Used for urgent or escalated merges.
+    required: true
+  team-leads-github-team:
+    description: >
+      GitHub team slug for team lead approvers.
+      Primary reviewers whose approval is required to merge.
+    required: true
+  total-required-approvals:
+    description: Number of total approvals required to approve the PR
+    default: 2
+    required: true
+runs:
+  using: node24
+  main: dist/index.js
