@@ -1,23 +1,25 @@
 const core   = require("@actions/core");
 const github = require("@actions/github");
-const { Octokit } = require("@octokit/rest");
-const { createOAuthAppAuth } = require("@octokit/auth-oauth-app");
+const { createAppAuth } = require("@octokit/auth-app");
 
 const { checkApproved, getPendingMessage, buildComment } = require("./approval");
 const { fetchReviews, buildApprovalCounts, upsertPrComment } = require("./github");
 
-function getOAuthAppOctokit(clientId, clientSecret) {
-  return new Octokit({
-    authStrategy: createOAuthAppAuth,
-    auth: { clientId, clientSecret },
-  });
+async function getInstallationOctokit(appId, privateKey, owner, repo) {
+  const auth = createAppAuth({ appId: parseInt(appId, 10), privateKey });
+
+  const { token: jwtToken } = await auth({ type: "app" });
+  const appOctokit = github.getOctokit(jwtToken);
+  const { data: installation } = await appOctokit.rest.apps.getRepoInstallation({ owner, repo });
+
+  const { token } = await auth({ type: "installation", installationId: installation.id });
+  return github.getOctokit(token);
 }
 
 async function run() {
   const commentOctokit = github.getOctokit(core.getInput("github-token", { required: true }));
   const { owner, repo } = github.context.repo;
 
-  const appId    = core.getInput("app-id",      { required: true });
   const prNumber = parseInt(core.getInput("pr-number",               { required: true }), 10);
   const minTotal = parseInt(core.getInput("total-required-approvals", { required: true }), 10);
 
@@ -26,9 +28,10 @@ async function run() {
     teamLead:   core.getInput("team-leads-github-team",  { required: true }),
   };
 
-  const orgOctokit = getOAuthAppOctokit(
-    core.getInput("client-id",     { required: true }),
-    core.getInput("client-secret", { required: true }),
+  const orgOctokit = await getInstallationOctokit(
+    core.getInput("app-id",      { required: true }),
+    core.getInput("private-key", { required: true }),
+    owner, repo,
   );
 
   const reviews = await fetchReviews(commentOctokit, owner, repo, prNumber);
