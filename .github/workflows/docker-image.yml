@@ -53,17 +53,17 @@ on:
         description: Attest build provenance
         required: false
         type: boolean
-        default: true
+        default: false
       enable_sbom:
         description: Generate and attest SBOM
         required: false
         type: boolean
-        default: true
+        default: false
       enable_cosign:
         description: Sign image with cosign
         required: false
         type: boolean
-        default: true
+        default: false
     secrets:
       PAT_TOKEN:
         description: PAT for private git dependencies
