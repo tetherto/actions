@@ -98,7 +98,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-          fetch-depth: 0
 
       - name: Authenticate to Google Cloud
         id: gcp_auth
@@ -157,6 +156,38 @@ jobs:
           printf '%s' "${PAT_TOKEN}" > "${RUNNER_TEMP}/pat_token"
           echo "PAT_TOKEN_FILE=${RUNNER_TEMP}/pat_token" >> "$GITHUB_ENV"
 
+      - name: Compute build cache config
+        id: cache
+        env:
+          IMAGE_NAME: ${{ inputs.image_name }}
+          REGISTRY: ${{ inputs.registry }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Always read from the shared/trusted cache for fast builds.
+          {
+            echo 'from<<EOF'
+            echo "type=gha,scope=${IMAGE_NAME}"
+            echo "type=registry,ref=${REGISTRY}/${IMAGE_NAME}:buildcache"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+          # Only trusted events may write the shared cache. PRs write to an isolated, PR-scoped gha cache 
+          if [ "${EVENT_NAME}" != "pull_request" ]; then
+            {
+              echo 'to<<EOF'
+              echo "type=gha,scope=${IMAGE_NAME},mode=max"
+              echo "type=registry,ref=${REGISTRY}/${IMAGE_NAME}:buildcache,mode=max,image-manifest=true"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo 'to<<EOF'
+              echo "type=gha,scope=${IMAGE_NAME}-pr-${PR_NUMBER},mode=max"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
         id: build
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.18.0
@@ -171,12 +202,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           secret-files: |
             PAT_TOKEN=${{ env.PAT_TOKEN_FILE }}
-          cache-from: |
-            type=gha,scope=${{ inputs.image_name }}
-            type=registry,ref=${{ inputs.registry }}/${{ inputs.image_name }}:buildcache
-          cache-to: |
-            type=gha,scope=${{ inputs.image_name }},mode=max
-            type=registry,ref=${{ inputs.registry }}/${{ inputs.image_name }}:buildcache,mode=max,image-manifest=true
+          cache-from: ${{ steps.cache.outputs.from }}
+          cache-to: ${{ steps.cache.outputs.to }}
           build-args: |
             BUILD_VERSION=${{ steps.meta.outputs.version }}
             BUILD_REVISION=${{ github.sha }}
