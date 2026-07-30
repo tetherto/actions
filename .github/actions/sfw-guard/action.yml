@@ -36,12 +36,24 @@ runs:
         dir="${{ github.workspace }}/.sfw-shims"
         mkdir -p "$dir"
         IFS=, read -ra M <<< "${{ inputs.managers }}"
-        make_shim () {
-          local name="$1"
-          printf '#!/usr/bin/env bash\nexec sfw %q "$@"\n' "$name" > "$dir/$name"
-          chmod +x "$dir/$name"
-        }
-        for m in "${M[@]}"; do make_shim "$m"; done
+        cat > "$dir/.sfw-wrapper" <<'WRAP'
+        #!/usr/bin/env bash
+        # Drop this dir from PATH: sfw looks the command up on PATH, so leaving it
+        # here makes sfw re-exec the shim instead of the real binary.
+        set -uo pipefail
+        cmd="$(basename "$0")"
+        self_dir="$(cd "$(dirname "$0")" && pwd)"
+        clean=""
+        IFS=':' read -ra parts <<< "$PATH"
+        for p in "${parts[@]}"; do
+          [ "$p" = "$self_dir" ] && continue
+          clean="${clean:+$clean:}$p"
+        done
+        export PATH="$clean"
+        exec sfw "$cmd" "$@"
+        WRAP
+        chmod +x "$dir/.sfw-wrapper"
+        for m in "${M[@]}"; do ln -sf .sfw-wrapper "$dir/$m"; done
         echo "$dir" >> "$GITHUB_PATH"
 
     - name: Create shims (Windows)
